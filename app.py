@@ -20,7 +20,8 @@ import websockets
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocketDisconnect
 from openai import OpenAI
 from pydantic import BaseModel
@@ -34,6 +35,7 @@ from pdf_report import generate_pdf
 from voice_prompts import build_screening_prompt
 
 BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 RECORDINGS_DIR = BASE_DIR / "recordings"
 RECORDINGS_DIR.mkdir(exist_ok=True)
 
@@ -59,6 +61,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 init_db()
 
 
@@ -119,6 +122,30 @@ class ReportRequest(BaseModel):
     patient: dict[str, Any]
     risk_result: dict[str, Any]
     voice_report: dict[str, Any] | None = None
+
+
+def _frontend_file(name: str) -> FileResponse:
+    return FileResponse(STATIC_DIR / name)
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index() -> FileResponse:
+    return _frontend_file("index.html")
+
+
+@app.get("/patient", response_class=HTMLResponse)
+async def patient_page() -> FileResponse:
+    return _frontend_file("patient.html")
+
+
+@app.get("/clinician", response_class=HTMLResponse)
+async def clinician_page() -> FileResponse:
+    return _frontend_file("clinician.html")
+
+
+@app.get("/org", response_class=HTMLResponse)
+async def org_page() -> FileResponse:
+    return _frontend_file("org.html")
 
 
 def _build_analysis_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -875,6 +902,8 @@ async def media_stream(websocket: WebSocket) -> None:
         risk_score=float(context.get("risk_score", 0.0)),
         gap_summary=context.get("gap_summary", ""),
     )
+    stream_sid = ""
+
     async with websockets.connect(
         "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03",
         ssl=SSL_CONTEXT,
@@ -891,16 +920,22 @@ async def media_stream(websocket: WebSocket) -> None:
                         "instructions": prompt,
                         "modalities": ["audio", "text"],
                         "temperature": 0.7,
+                        "turn_detection": {"type": "server_vad"},
                     },
                 }
             )
         )
+        # Trigger the AI to speak first (greeting)
+        await openai_ws.send(json.dumps({"type": "response.create"}))
 
         async def receive_from_twilio() -> None:
+            nonlocal stream_sid
             try:
                 async for message in websocket.iter_text():
                     data = json.loads(message)
-                    if data.get("event") == "media":
+                    if data.get("event") == "start":
+                        stream_sid = data.get("start", {}).get("streamSid", "")
+                    elif data.get("event") == "media":
                         await openai_ws.send(json.dumps({"type": "input_audio_buffer.append", "audio": data["media"]["payload"]}))
                     elif data.get("event") == "stop":
                         report = await process_recording_after_call(call_sid)
@@ -916,8 +951,7 @@ async def media_stream(websocket: WebSocket) -> None:
             async for message in openai_ws:
                 data = json.loads(message)
                 if data.get("type") == "response.audio.delta" and data.get("delta"):
-                    encoded = base64.b64encode(base64.b64decode(data["delta"])).decode("utf-8")
-                    await websocket.send_json({"event": "media", "streamSid": call_sid, "media": {"payload": encoded}})
+                    await websocket.send_json({"event": "media", "streamSid": stream_sid, "media": {"payload": data["delta"]}})
 
         await asyncio.gather(receive_from_twilio(), send_to_twilio())
 
