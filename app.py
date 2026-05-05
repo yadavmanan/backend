@@ -875,6 +875,8 @@ async def media_stream(websocket: WebSocket) -> None:
         risk_score=float(context.get("risk_score", 0.0)),
         gap_summary=context.get("gap_summary", ""),
     )
+    stream_sid: str | None = None
+
     async with websockets.connect(
         "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03",
         ssl=SSL_CONTEXT,
@@ -885,6 +887,7 @@ async def media_stream(websocket: WebSocket) -> None:
                 {
                     "type": "session.update",
                     "session": {
+                        "turn_detection": {"type": "server_vad"},
                         "input_audio_format": "g711_ulaw",
                         "output_audio_format": "g711_ulaw",
                         "voice": "alloy",
@@ -895,12 +898,17 @@ async def media_stream(websocket: WebSocket) -> None:
                 }
             )
         )
+        # Trigger the AI to deliver its opening greeting
+        await openai_ws.send(json.dumps({"type": "response.create"}))
 
         async def receive_from_twilio() -> None:
+            nonlocal stream_sid
             try:
                 async for message in websocket.iter_text():
                     data = json.loads(message)
-                    if data.get("event") == "media":
+                    if data.get("event") == "start":
+                        stream_sid = data["start"]["streamSid"]
+                    elif data.get("event") == "media":
                         await openai_ws.send(json.dumps({"type": "input_audio_buffer.append", "audio": data["media"]["payload"]}))
                     elif data.get("event") == "stop":
                         report = await process_recording_after_call(call_sid)
@@ -916,8 +924,8 @@ async def media_stream(websocket: WebSocket) -> None:
             async for message in openai_ws:
                 data = json.loads(message)
                 if data.get("type") == "response.audio.delta" and data.get("delta"):
-                    encoded = base64.b64encode(base64.b64decode(data["delta"])).decode("utf-8")
-                    await websocket.send_json({"event": "media", "streamSid": call_sid, "media": {"payload": encoded}})
+                    # OpenAI delta is already base64-encoded G.711 µ-law; pass it through directly
+                    await websocket.send_json({"event": "media", "streamSid": stream_sid or call_sid, "media": {"payload": data["delta"]}})
 
         await asyncio.gather(receive_from_twilio(), send_to_twilio())
 
