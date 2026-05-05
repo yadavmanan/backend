@@ -1,0 +1,73 @@
+{
+  "call_sid": "mock-6ce06950d3",
+  "status": "completed",
+  "transcript": "Mock screening call for dt. Patient reported exertional fatigue, intermittent jaw discomfort, and occasional night-time breathlessness.",
+  "symptom_report": {
+    "atypical_pain": {
+      "present": true,
+      "details": "Intermittent jaw discomfort",
+      "severity": "moderate"
+    },
+    "respiratory": {
+      "present": true,
+      "details": "Occasional night-time breathlessness",
+      "severity": "moderate"
+    },
+    "gastrointestinal": {
+      "present": false,
+      "details": null,
+      "severity": null
+    },
+    "neurological": {
+      "present": false,
+      "details": null,
+      "severity": null
+    },
+    "fatigue": {
+      "present": true,
+      "details": "Lower exercise tolerance",
+      "severity": "high"
+    },
+    "autonomic": {
+      "present": false,
+      "details": null,
+      "severity": null
+    },
+    "fluid_circulation": {
+      "present": false,
+      "details": null,
+      "severity": null
+    },
+    "pre_event_warning": {
+      "present": true,
+      "details": "Symptoms worsening over two weeks",
+      "severity": "moderate"
+    },
+    "sleep_related": {
+      "present": true,
+      "details": "Night-time breathlessness",
+      "severity": "moderate"
+    },
+    "emotional": {
+      "present": false,
+      "details": null,
+      "severity": null
+    },
+    "hormonal": {
+      "present": false,
+      "details": "not_applicable",
+      "severity": "mild"
+    },
+    "exertion_related": {
+      "present": true,
+      "details": "Fatigue increases with mild exertion",
+      "severity": "high"
+    }
+  },
+  "red_flags": [
+    "Reduced exercise tolerance",
+    "Jaw discomfort",
+    "Night-time breathlessness"
+  ],
+  "recommendation": "Atypical cardiac symptoms were reported. Recommend ECG, troponin testing, and clinician review."
+}
