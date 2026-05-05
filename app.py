@@ -20,8 +20,7 @@ import websockets
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.websockets import WebSocketDisconnect
 from openai import OpenAI
 from pydantic import BaseModel
@@ -35,7 +34,6 @@ from pdf_report import generate_pdf
 from voice_prompts import build_screening_prompt
 
 BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
 RECORDINGS_DIR = BASE_DIR / "recordings"
 RECORDINGS_DIR.mkdir(exist_ok=True)
 
@@ -61,7 +59,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 init_db()
 
 
@@ -122,30 +119,6 @@ class ReportRequest(BaseModel):
     patient: dict[str, Any]
     risk_result: dict[str, Any]
     voice_report: dict[str, Any] | None = None
-
-
-def _frontend_file(name: str) -> FileResponse:
-    return FileResponse(STATIC_DIR / name)
-
-
-@app.get("/", response_class=HTMLResponse)
-async def index() -> FileResponse:
-    return _frontend_file("index.html")
-
-
-@app.get("/patient", response_class=HTMLResponse)
-async def patient_page() -> FileResponse:
-    return _frontend_file("patient.html")
-
-
-@app.get("/clinician", response_class=HTMLResponse)
-async def clinician_page() -> FileResponse:
-    return _frontend_file("clinician.html")
-
-
-@app.get("/org", response_class=HTMLResponse)
-async def org_page() -> FileResponse:
-    return _frontend_file("org.html")
 
 
 def _build_analysis_payload(payload: dict[str, Any]) -> dict[str, Any]:
