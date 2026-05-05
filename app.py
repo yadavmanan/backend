@@ -876,7 +876,7 @@ async def media_stream(websocket: WebSocket) -> None:
         gap_summary=context.get("gap_summary", ""),
     )
     async with websockets.connect(
-        "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01",
+        "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03",
         ssl=SSL_CONTEXT,
         additional_headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "OpenAI-Beta": "realtime=v1"},
     ) as openai_ws:
