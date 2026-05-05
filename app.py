@@ -878,7 +878,7 @@ async def media_stream(websocket: WebSocket) -> None:
     async with websockets.connect(
         "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01",
         ssl=SSL_CONTEXT,
-        extra_headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "OpenAI-Beta": "realtime=v1"},
+        additional_headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "OpenAI-Beta": "realtime=v1"},
     ) as openai_ws:
         await openai_ws.send(
             json.dumps(
